@@ -1,19 +1,187 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+
+    <!-- ============================================================
+         SUPERPODCAST MAIN SCREEN
+
+         Features:
+         1. SuperPodcast header
+         2. Podcast search
+         3. Minimum title-word filter
+         4. Search button
+         5. My Subscriptions button
+         6. Podcast results
+         7. Loading indicator
+         ============================================================ -->
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F7F8FC"
+    android:padding="16dp"
     tools:context=".MainActivity">
 
+    <!-- ========================================================
+         APP HEADER
+         ======================================================== -->
+
     <TextView
+        android:id="@+id/textViewTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🎙️ SuperPodcast"
+        android:textColor="#1F2937"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Discover your next favorite podcast"
+        android:textColor="#6B7280"
+        android:textSize="15sp"
+        android:gravity="center"
+        android:paddingBottom="18dp" />
+
+    <!-- ========================================================
+         SEARCH CARD
+         ======================================================== -->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#FFFFFF"
+        android:padding="14dp"
+        android:elevation="3dp">
+
+        <!-- Search label -->
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Search Podcasts"
+            android:textColor="#1F2937"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:paddingBottom="6dp" />
+
+        <!-- Podcast search -->
+
+        <EditText
+            android:id="@+id/editTextSearch"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="#F1F3F7"
+            android:hint="🔎  Search by topic..."
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:textSize="15sp"
+            android:inputType="text"
+            android:singleLine="true" />
+
+        <!-- ====================================================
+             CUSTOM CRITERION
+             ==================================================== -->
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Advanced Filter"
+            android:textColor="#1F2937"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:paddingTop="14dp"
+            android:paddingBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Only show podcasts with at least this many words in the title."
+            android:textColor="#6B7280"
+            android:textSize="12sp"
+            android:paddingBottom="6dp" />
+
+        <EditText
+            android:id="@+id/editTextMinWords"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="#F1F3F7"
+            android:hint="Minimum title words (optional)"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:textSize="14sp"
+            android:inputType="number"
+            android:singleLine="true" />
+
+        <!-- ====================================================
+             SEARCH BUTTON
+             ==================================================== -->
+
+        <Button
+            android:id="@+id/buttonSearch"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:text="🔎  Search Podcasts"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textAllCaps="false" />
+
+    </LinearLayout>
+
+    <!-- ========================================================
+         SUBSCRIPTIONS BUTTON
+         ======================================================== -->
+
+    <Button
+        android:id="@+id/buttonSubscriptions"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="12dp"
+        android:text="📚  My Subscriptions"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textAllCaps="false" />
+
+    <!-- ========================================================
+         LOADING INDICATOR
+         ======================================================== -->
+
+    <ProgressBar
+        android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_gravity="center"
+        android:layout_marginTop="10dp"
+        android:visibility="gone" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- ========================================================
+         PODCAST RESULTS
+         ======================================================== -->
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Podcast Results"
+        android:textColor="#1F2937"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:paddingTop="12dp"
+        android:paddingBottom="6dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="8dp"
+        tools:listitem="@layout/item_podcast" />
+
+</LinearLayout>

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+    <!-- ============================================================
+         SUPERPODCAST PODCAST DETAILS SCREEN
+
+         Displays detailed information about one podcast.
+
+         Features:
+         1. Back to previous screen
+         2. Podcast artwork
+         3. Podcast title
+         4. Podcast creator
+         5. Subscribe button
+         6. Open or play podcast button
+         ============================================================ -->
+
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- ========================================================
+             BACK BUTTON
+             ======================================================== -->
+
+        <Button
+            android:id="@+id/buttonBack"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Back"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- ========================================================
+             PODCAST ARTWORK
+             ======================================================== -->
+
+        <ImageView
+            android:id="@+id/imageViewPodcastArtwork"
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:layout_gravity="center_horizontal"
+            android:contentDescription="Podcast artwork"
+            android:scaleType="centerCrop" />
+
+        <!-- ========================================================
+             PODCAST TITLE
+             ======================================================== -->
+
+        <TextView
+            android:id="@+id/textViewPodcastTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Podcast Title"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <!-- ========================================================
+             PODCAST CREATOR
+             ======================================================== -->
+
+        <TextView
+            android:id="@+id/textViewPodcastArtist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Podcast Creator"
+            android:textSize="18sp" />
+
+        <!-- ========================================================
+             SUBSCRIBE BUTTON
+             ======================================================== -->
+
+        <Button
+            android:id="@+id/buttonSubscribeDetails"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Subscribe" />
+
+        <!-- ========================================================
+             OPEN OR PLAY PODCAST
+             ======================================================== -->
+
+        <Button
+            android:id="@+id/buttonOpenPodcast"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Open / Play Podcast" />
+
+    </LinearLayout>
+
+</ScrollView>
+
