@@ -1,4 +1,3 @@
-
 package com.foziaakhtar.superpodcast
 
 import android.content.Intent
@@ -24,8 +23,9 @@ import com.google.gson.Gson
 // 1. Displays saved podcast subscriptions.
 // 2. Displays podcast artwork, title, and creator.
 // 3. Opens Podcast Details when a podcast is selected.
-// 4. Provides a Back to Search button.
-// 5. Handles system-bar spacing.
+// 4. Allows the user to remove a subscription.
+// 5. Provides a Back to Search button.
+// 6. Handles system-bar spacing.
 // ============================================================
 
 class SubscriptionsActivity : AppCompatActivity() {
@@ -150,11 +150,7 @@ class SubscriptionsActivity : AppCompatActivity() {
 
         if (savedSubscriptions.isEmpty()) {
 
-            textViewEmptyMessage.text =
-                "You have not subscribed to any podcasts yet."
-
-            textViewEmptyMessage.visibility =
-                TextView.VISIBLE
+            showEmptyMessage()
 
             return
         }
@@ -204,11 +200,7 @@ class SubscriptionsActivity : AppCompatActivity() {
 
         if (subscribedPodcasts.isEmpty()) {
 
-            textViewEmptyMessage.text =
-                "You have not subscribed to any podcasts yet."
-
-            textViewEmptyMessage.visibility =
-                TextView.VISIBLE
+            showEmptyMessage()
 
             return
         }
@@ -246,6 +238,8 @@ class SubscriptionsActivity : AppCompatActivity() {
 
                 // ------------------------------------------------
                 // SUBSCRIBE BUTTON
+                //
+                // This button is hidden in subscription mode.
                 // ------------------------------------------------
 
                 onSubscribeClick = { podcast ->
@@ -255,11 +249,100 @@ class SubscriptionsActivity : AppCompatActivity() {
                         "Already subscribed to this podcast.",
                         Toast.LENGTH_SHORT
                     ).show()
+                },
+
+                // ------------------------------------------------
+                // REMOVE SUBSCRIPTION
+                //
+                // Deletes the selected podcast from
+                // SharedPreferences.
+                // ------------------------------------------------
+
+                onRemoveSubscriptionClick = { podcast ->
+
+                    removeSubscription(
+                        podcast
+                    )
                 }
             )
 
         recyclerViewSubscriptions.adapter =
             subscriptionAdapter
+    }
+
+    // ============================================================
+    // REMOVE SUBSCRIPTION
+    //
+    // Removes the selected podcast from SharedPreferences.
+    // ============================================================
+
+    private fun removeSubscription(
+        podcast: Podcast
+    ) {
+
+        val sharedPreferences =
+            getSharedPreferences(
+                "SuperPodcastSubscriptions",
+                MODE_PRIVATE
+            )
+
+        // ========================================================
+        // FIND THE SAME ID USED WHEN THE PODCAST WAS SAVED
+        // ========================================================
+
+        val podcastId =
+            podcast.trackId?.toString()
+                ?: podcast.collectionName
+                ?: podcast.trackName
+                ?: "unknown"
+
+        val subscriptionKey =
+            "subscription_$podcastId"
+
+        // ========================================================
+        // REMOVE THE PODCAST
+        // ========================================================
+
+        sharedPreferences
+            .edit()
+            .remove(
+                subscriptionKey
+            )
+            .apply()
+
+        // ========================================================
+        // SHOW CONFIRMATION
+        // ========================================================
+
+        Toast.makeText(
+            this,
+            "Subscription removed.",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        // ========================================================
+        // REFRESH THE SUBSCRIPTIONS SCREEN
+        // ========================================================
+
+        loadSubscriptions()
+    }
+
+    // ============================================================
+    // SHOW EMPTY MESSAGE
+    //
+    // Displays the message when there are no subscriptions.
+    // ============================================================
+
+    private fun showEmptyMessage() {
+
+        textViewEmptyMessage.text =
+            "You have not subscribed to any podcasts yet."
+
+        textViewEmptyMessage.visibility =
+            TextView.VISIBLE
+
+        recyclerViewSubscriptions.adapter =
+            null
     }
 
     // ============================================================
@@ -325,7 +408,9 @@ class SubscriptionsActivity : AppCompatActivity() {
             val intent =
                 Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse(podcastUrl)
+                    Uri.parse(
+                        podcastUrl
+                    )
                 )
 
             startActivity(
@@ -342,4 +427,3 @@ class SubscriptionsActivity : AppCompatActivity() {
         }
     }
 }
-

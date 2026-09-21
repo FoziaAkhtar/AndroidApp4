@@ -20,12 +20,15 @@ import com.bumptech.glide.Glide
 // 3. Display podcast creator.
 // 4. Handle podcast selection.
 // 5. Handle the Subscribe button.
+// 6. Handle the Remove Subscription button.
+// 7. Support both Search and Subscription screens.
 // ============================================================
 
 class PodcastAdapter(
     private var podcastList: List<Podcast>,
     private val onPodcastClick: (Podcast) -> Unit,
-    private val onSubscribeClick: (Podcast) -> Unit
+    private val onSubscribeClick: (Podcast) -> Unit,
+    private val onRemoveSubscriptionClick: ((Podcast) -> Unit)? = null
 ) : RecyclerView.Adapter<PodcastAdapter.PodcastViewHolder>() {
 
     // ========================================================
@@ -45,6 +48,9 @@ class PodcastAdapter(
 
         val subscribeButton: Button =
             itemView.findViewById(R.id.buttonSubscribe)
+
+        val removeSubscriptionButton: Button =
+            itemView.findViewById(R.id.buttonRemoveSubscription)
     }
 
     // ========================================================
@@ -56,8 +62,13 @@ class PodcastAdapter(
         viewType: Int
     ): PodcastViewHolder {
 
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_podcast, parent, false)
+        val view =
+            LayoutInflater.from(parent.context)
+                .inflate(
+                    R.layout.item_podcast,
+                    parent,
+                    false
+                )
 
         return PodcastViewHolder(view)
     }
@@ -71,7 +82,8 @@ class PodcastAdapter(
         position: Int
     ) {
 
-        val podcast = podcastList[position]
+        val podcast =
+            podcastList[position]
 
         // ----------------------------------------------------
         // PODCAST TITLE
@@ -96,31 +108,76 @@ class PodcastAdapter(
 
         Glide.with(holder.itemView.context)
             .load(podcast.artworkUrl100)
-            .placeholder(android.R.drawable.ic_menu_gallery)
-            .error(android.R.drawable.ic_menu_gallery)
+            .placeholder(
+                android.R.drawable.ic_menu_gallery
+            )
+            .error(
+                android.R.drawable.ic_menu_gallery
+            )
             .into(holder.artwork)
 
         // ----------------------------------------------------
         // PODCAST CLICK
         //
-        // Tapping the podcast itself opens the podcast.
+        // Tapping the podcast itself opens the
+        // Podcast Details screen.
         // ----------------------------------------------------
 
         holder.itemView.setOnClickListener {
 
-            onPodcastClick(podcast)
+            onPodcastClick(
+                podcast
+            )
         }
 
         // ----------------------------------------------------
         // SUBSCRIBE BUTTON
         //
-        // Tapping Subscribe sends the selected podcast back
-        // to MainActivity.
+        // The Subscribe button is visible when the adapter
+        // is being used by the Search screen.
         // ----------------------------------------------------
+
+        if (onRemoveSubscriptionClick == null) {
+
+            holder.subscribeButton.visibility =
+                View.VISIBLE
+
+        } else {
+
+            holder.subscribeButton.visibility =
+                View.GONE
+        }
 
         holder.subscribeButton.setOnClickListener {
 
-            onSubscribeClick(podcast)
+            onSubscribeClick(
+                podcast
+            )
+        }
+
+        // ----------------------------------------------------
+        // REMOVE SUBSCRIPTION BUTTON
+        //
+        // The Remove button is visible when the adapter
+        // is being used by the Subscriptions screen.
+        // ----------------------------------------------------
+
+        if (onRemoveSubscriptionClick != null) {
+
+            holder.removeSubscriptionButton.visibility =
+                View.VISIBLE
+
+        } else {
+
+            holder.removeSubscriptionButton.visibility =
+                View.GONE
+        }
+
+        holder.removeSubscriptionButton.setOnClickListener {
+
+            onRemoveSubscriptionClick?.invoke(
+                podcast
+            )
         }
     }
 
@@ -137,9 +194,12 @@ class PodcastAdapter(
     // UPDATE LIST
     // ========================================================
 
-    fun updateList(newList: List<Podcast>) {
+    fun updateList(
+        newList: List<Podcast>
+    ) {
 
-        podcastList = newList
+        podcastList =
+            newList
 
         notifyDataSetChanged()
     }

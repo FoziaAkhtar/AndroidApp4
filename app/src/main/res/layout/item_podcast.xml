@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-    <!-- ============================================================
-         SUPERPODCAST PODCAST RESULT ITEM
+<!-- ============================================================
+     SUPERPODCAST PODCAST RESULT ITEM
 
-         Displays:
-         1. Podcast artwork
-         2. Podcast title
-         3. Podcast creator
-         4. Subscribe button
+     Displays:
+     1. Podcast artwork
+     2. Podcast title
+     3. Podcast creator
+     4. Subscribe button
+     5. Remove Subscription button
 
-         Existing IDs are preserved so PodcastAdapter.kt
-         does not need to be changed.
-         ============================================================ -->
+     Existing IDs are preserved so the current
+     PodcastAdapter.kt continues to work.
+     ============================================================ -->
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -47,7 +48,9 @@
         android:layout_marginStart="14dp"
         android:orientation="vertical">
 
-        <!-- Podcast title -->
+        <!-- ====================================================
+             PODCAST TITLE
+             ==================================================== -->
 
         <TextView
             android:id="@+id/textViewPodcastTitle"
@@ -60,7 +63,9 @@
             android:maxLines="2"
             android:ellipsize="end" />
 
-        <!-- Podcast creator -->
+        <!-- ====================================================
+             PODCAST CREATOR
+             ==================================================== -->
 
         <TextView
             android:id="@+id/textViewArtist"
@@ -73,7 +78,9 @@
             android:maxLines="1"
             android:ellipsize="end" />
 
-        <!-- Subscribe button -->
+        <!-- ====================================================
+             SUBSCRIBE BUTTON
+             ==================================================== -->
 
         <Button
             android:id="@+id/buttonSubscribe"
@@ -83,6 +90,23 @@
             android:text="Subscribe"
             android:textSize="13sp"
             android:textAllCaps="false" />
+
+        <!-- ====================================================
+             REMOVE SUBSCRIPTION BUTTON
+
+             This button will be connected to
+             SubscriptionsActivity in the next step.
+             ==================================================== -->
+
+        <Button
+            android:id="@+id/buttonRemoveSubscription"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginTop="4dp"
+            android:text="Remove Subscription"
+            android:textSize="13sp"
+            android:textAllCaps="false"
+            android:visibility="gone" />
 
     </LinearLayout>
 
