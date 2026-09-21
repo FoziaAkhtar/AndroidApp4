@@ -1,4 +1,3 @@
-
 package com.foziaakhtar.superpodcast
 
 import android.content.Intent
@@ -15,21 +14,37 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // ============================================================
 // SUPERPODCAST MAIN ACTIVITY
 //
-// Main responsibilities:
+// PURPOSE:
+// Main screen for searching and browsing podcasts.
+//
+// RESPONSIBILITIES:
 // 1. Search Apple's iTunes Podcast API.
 // 2. Apply the minimum title-word criterion.
 // 3. Display podcast search results.
 // 4. Open the Podcast Details screen.
 // 5. Open the My Subscriptions screen.
-// 6. Subscribe through the search results.
+// 6. Subscribe to podcasts using the Room database.
+//
+// IMPORTANT:
+// Room is now the single source of truth for subscriptions.
+//
+// The old SharedPreferences subscription system has been
+// removed so that Search, Podcast Details, and My Subscriptions
+// all use the same database.
 // ============================================================
 
 class MainActivity : AppCompatActivity() {
+
+    // ========================================================
+    // UI REFERENCES
+    // ========================================================
 
     private lateinit var editTextSearch: EditText
     private lateinit var editTextMinWords: EditText
@@ -38,14 +53,39 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var recyclerView: RecyclerView
 
+    // ========================================================
+    // PODCAST ADAPTER
+    // ========================================================
+
     private lateinit var podcastAdapter: PodcastAdapter
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    // ========================================================
+    // ROOM DATABASE
+    // ========================================================
+
+    private lateinit var database: AppDatabase
+
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
+
+        super.onCreate(
+            savedInstanceState
+        )
+
+        // ====================================================
+        // ENABLE EDGE-TO-EDGE
+        // ====================================================
 
         enableEdgeToEdge()
 
-        setContentView(R.layout.activity_main)
+        // ====================================================
+        // LOAD MAIN SCREEN
+        // ====================================================
+
+        setContentView(
+            R.layout.activity_main
+        )
 
         // ========================================================
         // HANDLE SYSTEM BAR INSETS
@@ -75,48 +115,80 @@ class MainActivity : AppCompatActivity() {
         // ========================================================
 
         editTextSearch =
-            findViewById(R.id.editTextSearch)
+            findViewById(
+                R.id.editTextSearch
+            )
 
         editTextMinWords =
-            findViewById(R.id.editTextMinWords)
+            findViewById(
+                R.id.editTextMinWords
+            )
 
         buttonSearch =
-            findViewById(R.id.buttonSearch)
+            findViewById(
+                R.id.buttonSearch
+            )
 
         buttonSubscriptions =
-            findViewById(R.id.buttonSubscriptions)
+            findViewById(
+                R.id.buttonSubscriptions
+            )
 
         progressBar =
-            findViewById(R.id.progressBar)
+            findViewById(
+                R.id.progressBar
+            )
 
         recyclerView =
-            findViewById(R.id.recyclerView)
+            findViewById(
+                R.id.recyclerView
+            )
+
+        // ========================================================
+        // INITIALIZE ROOM DATABASE
+        //
+        // This is now used by the search-result Subscribe button.
+        // ========================================================
+
+        database =
+            AppDatabase.getDatabase(
+                applicationContext
+            )
 
         // ========================================================
         // CREATE PODCAST ADAPTER
         // ========================================================
 
-        podcastAdapter = PodcastAdapter(
-            emptyList(),
+        podcastAdapter =
+            PodcastAdapter(
+                emptyList(),
 
-            // When the user taps the podcast itself,
-            // open the Podcast Details screen.
-            onPodcastClick = { podcast ->
+                // ------------------------------------------------
+                // PODCAST CARD CLICK
+                // ------------------------------------------------
+                onPodcastClick = { podcast ->
 
-                openPodcastDetails(
-                    podcast
-                )
-            },
+                    openPodcastDetails(
+                        podcast
+                    )
+                },
 
-            // When the user taps Subscribe,
-            // save the podcast locally.
-            onSubscribeClick = { podcast ->
+                // ------------------------------------------------
+                // SUBSCRIBE BUTTON
+                //
+                // Uses Room instead of SharedPreferences.
+                // ------------------------------------------------
+                onSubscribeClick = { podcast ->
 
-                subscribeToPodcast(
-                    podcast
-                )
-            }
-        )
+                    subscribeToPodcast(
+                        podcast
+                    )
+                }
+            )
+
+        // ========================================================
+        // SET UP RECYCLERVIEW
+        // ========================================================
 
         recyclerView.layoutManager =
             LinearLayoutManager(this)
@@ -129,11 +201,14 @@ class MainActivity : AppCompatActivity() {
         // ========================================================
 
         buttonSearch.setOnClickListener {
+
             searchPodcasts()
         }
 
         // ========================================================
         // MY SUBSCRIPTIONS BUTTON
+        //
+        // Opens the Room-based subscriptions screen.
         // ========================================================
 
         buttonSubscriptions.setOnClickListener {
@@ -153,8 +228,8 @@ class MainActivity : AppCompatActivity() {
     // ============================================================
     // OPEN PODCAST DETAILS
     //
-    // Converts the Podcast object to JSON and sends it to
-    // PodcastDetailsActivity through an Intent.
+    // Converts the Podcast object into JSON and sends it to
+    // PodcastDetailsActivity.
     // ============================================================
 
     private fun openPodcastDetails(
@@ -185,45 +260,133 @@ class MainActivity : AppCompatActivity() {
     // ============================================================
     // SUBSCRIBE TO PODCAST
     //
-    // Saves the complete Podcast object as JSON.
+    // IMPORTANT:
+    // This function now saves subscriptions directly into Room.
+    //
+    // This keeps the subscription system consistent:
+    //
+    // Search
+    //    ↓
+    // Room
+    //    ↓
+    // My Subscriptions
+    //
+    // Podcast Details also uses the same Room database.
     // ============================================================
 
     private fun subscribeToPodcast(
         podcast: Podcast
     ) {
 
-        val sharedPreferences =
-            getSharedPreferences(
-                "SuperPodcastSubscriptions",
-                MODE_PRIVATE
-            )
+        // ========================================================
+        // REQUIRED PODCAST ID
+        // ========================================================
 
-        val podcastId =
-            podcast.trackId?.toString()
-                ?: podcast.collectionName
-                ?: podcast.trackName
-                ?: "unknown"
+        val trackId =
+            podcast.trackId
 
-        // Convert Podcast object into JSON.
-        val podcastJson =
-            com.google.gson.Gson().toJson(
-                podcast
-            )
+        if (trackId == null) {
 
-        // Save the complete podcast information.
-        sharedPreferences
-            .edit()
-            .putString(
-                "subscription_$podcastId",
-                podcastJson
-            )
-            .apply()
+            Toast.makeText(
+                this,
+                "Podcast ID is unavailable.",
+                Toast.LENGTH_SHORT
+            ).show()
 
-        Toast.makeText(
-            this,
-            "Subscribed to ${podcast.collectionName ?: "podcast"}",
-            Toast.LENGTH_SHORT
-        ).show()
+            return
+        }
+
+        // ========================================================
+        // REQUIRED RSS FEED URL
+        //
+        // Assignment 8 needs the RSS URL for future episode
+        // update checks with WorkManager.
+        // ========================================================
+
+        val feedUrl =
+            podcast.feedUrl
+
+        if (feedUrl.isNullOrBlank()) {
+
+            Toast.makeText(
+                this,
+                "This podcast does not have an RSS feed.",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            return
+        }
+
+        // ========================================================
+        // SAVE TO ROOM
+        //
+        // Database work runs on the IO dispatcher so the main
+        // Android UI thread is not blocked.
+        // ========================================================
+
+        lifecycleScope.launch {
+
+            try {
+
+                withContext(
+                    Dispatchers.IO
+                ) {
+
+                    val subscribedPodcast =
+                        SubscribedPodcast(
+                            trackId = trackId,
+                            collectionName =
+                                podcast.collectionName
+                                    ?: podcast.trackName
+                                    ?: "Unknown Podcast",
+                            artistName =
+                                podcast.artistName
+                                    ?: "Unknown Creator",
+                            artworkUrl100 =
+                                podcast.artworkUrl100
+                                    ?: "",
+                            feedUrl =
+                                feedUrl,
+                            collectionViewUrl =
+                                podcast.collectionViewUrl
+                                    ?: ""
+                        )
+
+                    database
+                        .subscriptionDao()
+                        .insert(
+                            subscribedPodcast
+                        )
+                }
+
+                // =================================================
+                // CONFIRM SUCCESS
+                // =================================================
+
+                Toast.makeText(
+                    this@MainActivity,
+                    "Subscribed to ${
+                        podcast.collectionName
+                            ?: "podcast"
+                    }",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+            } catch (
+                exception: Exception
+            ) {
+
+                // =================================================
+                // HANDLE DATABASE ERROR
+                // =================================================
+
+                Toast.makeText(
+                    this@MainActivity,
+                    "Unable to save subscription.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 
     // ============================================================
@@ -344,7 +507,9 @@ class MainActivity : AppCompatActivity() {
                     ).show()
                 }
 
-            } catch (exception: Exception) {
+            } catch (
+                exception: Exception
+            ) {
 
                 // ====================================================
                 // HANDLE NETWORK ERROR

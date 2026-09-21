@@ -1,4 +1,3 @@
-
 package com.foziaakhtar.superpodcast
 
 import android.view.LayoutInflater
@@ -11,14 +10,20 @@ import androidx.recyclerview.widget.RecyclerView
 // ============================================================
 // EPISODE ADAPTER
 //
+// PURPOSE:
 // Connects podcast episode data to the RecyclerView.
 //
-// Responsibilities:
+// RESPONSIBILITIES:
 // 1. Display episode title.
 // 2. Display publication date.
 // 3. Display episode description.
-// 4. Handle the Play Episode button.
-// 5. Update the episode list when new RSS data is loaded.
+// 4. Display AUDIO or VIDEO media type.
+// 5. Handle the Play Episode button.
+// 6. Update the episode list when new RSS data is loaded.
+//
+// ASSIGNMENT 8:
+// The adapter uses Episode.mediaType and
+// PodcastRssParser.isVideoMedia() to identify video episodes.
 // ============================================================
 
 class EpisodeAdapter(
@@ -36,20 +41,47 @@ class EpisodeAdapter(
         itemView: View
     ) : RecyclerView.ViewHolder(itemView) {
 
+        // ----------------------------------------------------
+        // Episode title.
+        // ----------------------------------------------------
+
         val title: TextView =
             itemView.findViewById(
                 R.id.textViewEpisodeTitle
             )
+
+        // ----------------------------------------------------
+        // Publication date.
+        // ----------------------------------------------------
 
         val date: TextView =
             itemView.findViewById(
                 R.id.textViewEpisodeDate
             )
 
+        // ----------------------------------------------------
+        // Episode description.
+        // ----------------------------------------------------
+
         val description: TextView =
             itemView.findViewById(
                 R.id.textViewEpisodeDescription
             )
+
+        // ----------------------------------------------------
+        // AUDIO / VIDEO label.
+        //
+        // This view must exist in item_episode.xml.
+        // ----------------------------------------------------
+
+        val mediaType: TextView =
+            itemView.findViewById(
+                R.id.textViewEpisodeType
+            )
+
+        // ----------------------------------------------------
+        // Play button.
+        // ----------------------------------------------------
 
         val playButton: Button =
             itemView.findViewById(
@@ -60,7 +92,7 @@ class EpisodeAdapter(
     // ========================================================
     // CREATE VIEW HOLDER
     //
-    // Creates the visual layout for one episode.
+    // Inflates item_episode.xml for each episode.
     // ========================================================
 
     override fun onCreateViewHolder(
@@ -85,7 +117,8 @@ class EpisodeAdapter(
     // ========================================================
     // BIND EPISODE DATA
     //
-    // Places the Episode information into the views.
+    // Places the selected Episode information into the
+    // RecyclerView item.
     // ========================================================
 
     override fun onBindViewHolder(
@@ -138,10 +171,30 @@ class EpisodeAdapter(
             }
 
         // ----------------------------------------------------
+        // AUDIO / VIDEO TYPE
+        //
+        // PodcastRssParser checks:
+        // 1. RSS MIME type.
+        // 2. Video file extension.
+        // ----------------------------------------------------
+
+        val isVideo =
+            PodcastRssParser.isVideoMedia(
+                episode.mediaType,
+                episode.audioUrl
+            )
+
+        holder.mediaType.text =
+            if (isVideo) {
+                "VIDEO"
+            } else {
+                "AUDIO"
+            }
+
+        // ----------------------------------------------------
         // PLAY EPISODE BUTTON
         //
         // Sends the selected Episode back to the Activity.
-        // The Activity will later use Media3 to play it.
         // ----------------------------------------------------
 
         holder.playButton.setOnClickListener {
@@ -177,4 +230,5 @@ class EpisodeAdapter(
         notifyDataSetChanged()
     }
 }
+
 

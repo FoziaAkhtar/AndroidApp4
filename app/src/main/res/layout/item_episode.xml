@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<!-- ============================================================
-     SUPERPODCAST EPISODE ITEM
+    <!-- ============================================================
+         SUPERPODCAST EPISODE ITEM
 
-     Displays one podcast episode.
+         Displays one podcast episode.
 
-     Features:
-     1. Episode title
-     2. Publication date
-     3. Episode description
-     4. Play button
-     ============================================================ -->
+         Features:
+         1. Episode title
+         2. AUDIO / VIDEO media type
+         3. Publication date
+         4. Episode description
+         5. Play button
+         ============================================================ -->
 
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -24,19 +25,53 @@
     android:elevation="2dp">
 
     <!-- ========================================================
-         EPISODE TITLE
+         TITLE AND MEDIA TYPE ROW
          ======================================================== -->
 
-    <TextView
-        android:id="@+id/textViewEpisodeTitle"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Episode Title"
-        android:textColor="#1F2937"
-        android:textSize="17sp"
-        android:textStyle="bold"
-        android:maxLines="2"
-        android:ellipsize="end" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- ====================================================
+             EPISODE TITLE
+             ==================================================== -->
+
+        <TextView
+            android:id="@+id/textViewEpisodeTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Episode Title"
+            android:textColor="#1F2937"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <!-- ====================================================
+             AUDIO / VIDEO MEDIA TYPE
+
+             This value is filled by EpisodeAdapter.
+
+             Possible values:
+             AUDIO
+             VIDEO
+             ==================================================== -->
+
+        <TextView
+            android:id="@+id/textViewEpisodeType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="AUDIO"
+            android:textColor="#6B7280"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:maxLines="1" />
+
+    </LinearLayout>
 
     <!-- ========================================================
          EPISODE PUBLICATION DATE

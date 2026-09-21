@@ -13,23 +13,31 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // ============================================================
 // PODCAST DETAILS ACTIVITY
 //
+// PURPOSE:
 // Displays detailed information about a selected podcast.
 //
-// Features:
-// 1. Back to previous screen.
-// 2. Display podcast artwork.
-// 3. Display podcast title.
-// 4. Display podcast creator.
-// 5. Subscribe to the podcast.
-// 6. Open the podcast.
-// 7. Load latest podcast episodes from RSS.
-// 8. Display episodes in a RecyclerView.
-// 9. Open selected episodes in the Media3 player.
+// FEATURES:
+// 1. Back navigation.
+// 2. Podcast artwork.
+// 3. Podcast title.
+// 4. Podcast creator.
+// 5. Subscribe / Unsubscribe using Room.
+// 6. Open podcast URL.
+// 7. Load RSS podcast episodes.
+// 8. Display episodes in RecyclerView.
+// 9. Display AUDIO / VIDEO episode type.
+// 10. Open selected episodes in the Media3 player.
+//
+// ASSIGNMENT 8:
+// RSS episodes are loaded using PodcastRssParser.
+// Room is the source of truth for subscriptions.
 // ============================================================
 
 class PodcastDetailsActivity : AppCompatActivity() {
@@ -39,15 +47,10 @@ class PodcastDetailsActivity : AppCompatActivity() {
     // ========================================================
 
     private lateinit var buttonBack: Button
-
     private lateinit var imageViewPodcastArtwork: ImageView
-
     private lateinit var textViewPodcastTitle: TextView
-
     private lateinit var textViewPodcastArtist: TextView
-
     private lateinit var buttonSubscribeDetails: Button
-
     private lateinit var buttonOpenPodcast: Button
 
     // ========================================================
@@ -55,7 +58,6 @@ class PodcastDetailsActivity : AppCompatActivity() {
     // ========================================================
 
     private lateinit var textViewEpisodesLoading: TextView
-
     private lateinit var recyclerViewEpisodes: RecyclerView
 
     // ========================================================
@@ -64,21 +66,36 @@ class PodcastDetailsActivity : AppCompatActivity() {
 
     private lateinit var episodeAdapter: EpisodeAdapter
 
+    // ========================================================
+    // ROOM DATABASE
+    // ========================================================
+
+    private lateinit var database: AppDatabase
+
+    // ========================================================
+    // CURRENT PODCAST
+    // ========================================================
+
+    private lateinit var currentPodcast: Podcast
+
+    // ========================================================
+    // SUBSCRIPTION STATE
+    // ========================================================
+
+    private var isPodcastSubscribed = false
+
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
-
-        super.onCreate(
-            savedInstanceState
-        )
+        super.onCreate(savedInstanceState)
 
         setContentView(
             R.layout.activity_podcast_details
         )
 
-        // ========================================================
+        // ====================================================
         // CONNECT PODCAST DETAIL VIEWS
-        // ========================================================
+        // ====================================================
 
         buttonBack =
             findViewById(
@@ -110,9 +127,9 @@ class PodcastDetailsActivity : AppCompatActivity() {
                 R.id.buttonOpenPodcast
             )
 
-        // ========================================================
+        // ====================================================
         // CONNECT EPISODE VIEWS
-        // ========================================================
+        // ====================================================
 
         textViewEpisodesLoading =
             findViewById(
@@ -124,33 +141,33 @@ class PodcastDetailsActivity : AppCompatActivity() {
                 R.id.recyclerViewEpisodes
             )
 
-        // ========================================================
+        // ====================================================
+        // INITIALIZE ROOM DATABASE
+        // ====================================================
+
+        database =
+            AppDatabase.getDatabase(
+                applicationContext
+            )
+
+        // ====================================================
         // BACK BUTTON
-        //
-        // Returns to whichever screen opened the details screen.
-        //
-        // Search -> Details -> Back -> Search
-        //
-        // Subscriptions -> Details -> Back -> Subscriptions
-        // ========================================================
+        // ====================================================
 
         buttonBack.setOnClickListener {
-
             finish()
         }
 
-        // ========================================================
-        // RECEIVE PODCAST FROM PREVIOUS SCREEN
-        // ========================================================
+        // ====================================================
+        // RECEIVE PODCAST JSON
+        // ====================================================
 
         val podcastJson =
             intent.getStringExtra(
                 "podcast_json"
             )
 
-        if (
-            podcastJson.isNullOrBlank()
-        ) {
+        if (podcastJson.isNullOrBlank()) {
 
             Toast.makeText(
                 this,
@@ -163,9 +180,9 @@ class PodcastDetailsActivity : AppCompatActivity() {
             return
         }
 
-        // ========================================================
+        // ====================================================
         // CONVERT JSON INTO PODCAST OBJECT
-        // ========================================================
+        // ====================================================
 
         val podcast =
             try {
@@ -182,13 +199,11 @@ class PodcastDetailsActivity : AppCompatActivity() {
                 null
             }
 
-        // ========================================================
+        // ====================================================
         // CHECK PODCAST DATA
-        // ========================================================
+        // ====================================================
 
-        if (
-            podcast == null
-        ) {
+        if (podcast == null) {
 
             Toast.makeText(
                 this,
@@ -201,26 +216,33 @@ class PodcastDetailsActivity : AppCompatActivity() {
             return
         }
 
-        // ========================================================
+        // ====================================================
+        // STORE CURRENT PODCAST
+        // ====================================================
+
+        currentPodcast =
+            podcast
+
+        // ====================================================
         // DISPLAY PODCAST TITLE
-        // ========================================================
+        // ====================================================
 
         textViewPodcastTitle.text =
             podcast.collectionName
                 ?: podcast.trackName
                         ?: "Unknown Podcast"
 
-        // ========================================================
+        // ====================================================
         // DISPLAY PODCAST CREATOR
-        // ========================================================
+        // ====================================================
 
         textViewPodcastArtist.text =
             podcast.artistName
                 ?: "Unknown Creator"
 
-        // ========================================================
+        // ====================================================
         // LOAD PODCAST ARTWORK
-        // ========================================================
+        // ====================================================
 
         Glide.with(this)
             .load(
@@ -236,31 +258,27 @@ class PodcastDetailsActivity : AppCompatActivity() {
                 imageViewPodcastArtwork
             )
 
-        // ========================================================
-        // SUBSCRIBE BUTTON
-        // ========================================================
+        // ====================================================
+        // SUBSCRIBE / UNSUBSCRIBE BUTTON
+        // ====================================================
 
         buttonSubscribeDetails.setOnClickListener {
-
-            subscribeToPodcast(
-                podcast
-            )
+            toggleSubscription()
         }
 
-        // ========================================================
+        // ====================================================
         // OPEN PODCAST BUTTON
-        // ========================================================
+        // ====================================================
 
         buttonOpenPodcast.setOnClickListener {
-
             openPodcast(
-                podcast
+                currentPodcast
             )
         }
 
-        // ========================================================
+        // ====================================================
         // SET UP EPISODE RECYCLERVIEW
-        // ========================================================
+        // ====================================================
 
         episodeAdapter =
             EpisodeAdapter(
@@ -273,29 +291,246 @@ class PodcastDetailsActivity : AppCompatActivity() {
             }
 
         recyclerViewEpisodes.layoutManager =
-            LinearLayoutManager(
-                this
-            )
+            LinearLayoutManager(this)
 
         recyclerViewEpisodes.adapter =
             episodeAdapter
 
-        // ========================================================
+        // ====================================================
+        // CHECK CURRENT SUBSCRIPTION STATUS
+        // ====================================================
+
+        checkSubscriptionStatus()
+
+        // ====================================================
         // LOAD RSS EPISODES
-        // ========================================================
+        // ====================================================
 
         loadPodcastEpisodes(
-            podcast
+            currentPodcast
         )
+    }
+
+    // ============================================================
+    // CHECK SUBSCRIPTION STATUS
+    //
+    // Room is the source of truth.
+    // ============================================================
+
+    private fun checkSubscriptionStatus() {
+
+        lifecycleScope.launch {
+
+            val subscribed =
+                withContext(
+                    Dispatchers.IO
+                ) {
+
+                    database
+                        .subscriptionDao()
+                        .isSubscribed(
+                            currentPodcast.trackId ?: -1L
+                        )
+                }
+
+            isPodcastSubscribed =
+                subscribed
+
+            updateSubscriptionButton()
+        }
+    }
+
+    // ============================================================
+    // UPDATE SUBSCRIPTION BUTTON
+    // ============================================================
+
+    private fun updateSubscriptionButton() {
+
+        buttonSubscribeDetails.text =
+            if (isPodcastSubscribed) {
+
+                "UNSUBSCRIBE"
+
+            } else {
+
+                "SUBSCRIBE"
+            }
+    }
+
+    // ============================================================
+    // TOGGLE SUBSCRIPTION
+    //
+    // Adds or removes the podcast from Room.
+    // ============================================================
+
+    private fun toggleSubscription() {
+
+        lifecycleScope.launch {
+
+            val trackId =
+                currentPodcast.trackId
+
+            // ----------------------------------------------------
+            // TRACK ID IS REQUIRED
+            // ----------------------------------------------------
+
+            if (trackId == null) {
+
+                Toast.makeText(
+                    this@PodcastDetailsActivity,
+                    "Podcast ID is unavailable.",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return@launch
+            }
+
+            // ----------------------------------------------------
+            // FEED URL IS REQUIRED
+            // ----------------------------------------------------
+
+            val feedUrl =
+                currentPodcast.feedUrl
+
+            if (feedUrl.isNullOrBlank()) {
+
+                Toast.makeText(
+                    this@PodcastDetailsActivity,
+                    "This podcast does not have an RSS feed.",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return@launch
+            }
+
+            // ----------------------------------------------------
+            // CHANGE ROOM DATABASE
+            // ----------------------------------------------------
+
+            withContext(
+                Dispatchers.IO
+            ) {
+
+                if (isPodcastSubscribed) {
+
+                    // ==========================================
+                    // REMOVE SUBSCRIPTION
+                    // ==========================================
+
+                    val existingPodcast =
+                        database
+                            .subscriptionDao()
+                            .getByTrackId(
+                                trackId
+                            )
+
+                    if (existingPodcast != null) {
+
+                        database
+                            .subscriptionDao()
+                            .delete(
+                                existingPodcast
+                            )
+                    }
+
+                } else {
+
+                    // ==========================================
+                    // ADD SUBSCRIPTION
+                    // ==========================================
+
+                    val subscribedPodcast =
+                        SubscribedPodcast(
+                            trackId = trackId,
+                            collectionName =
+                                currentPodcast.collectionName
+                                    ?: currentPodcast.trackName
+                                    ?: "Unknown Podcast",
+                            artistName =
+                                currentPodcast.artistName
+                                    ?: "Unknown Creator",
+                            artworkUrl100 =
+                                currentPodcast.artworkUrl100
+                                    ?: "",
+                            feedUrl =
+                                feedUrl,
+                            collectionViewUrl =
+                                currentPodcast.collectionViewUrl
+                                    ?: ""
+                        )
+
+                    database
+                        .subscriptionDao()
+                        .insert(
+                            subscribedPodcast
+                        )
+                }
+            }
+
+            // ----------------------------------------------------
+            // READ ROOM AGAIN
+            //
+            // Room remains the source of truth.
+            // ----------------------------------------------------
+
+            val databaseState =
+                withContext(
+                    Dispatchers.IO
+                ) {
+
+                    database
+                        .subscriptionDao()
+                        .isSubscribed(
+                            trackId
+                        )
+                }
+
+            // ----------------------------------------------------
+            // UPDATE LOCAL STATE FROM ROOM
+            // ----------------------------------------------------
+
+            isPodcastSubscribed =
+                databaseState
+
+            // ----------------------------------------------------
+            // UPDATE BUTTON
+            // ----------------------------------------------------
+
+            updateSubscriptionButton()
+
+            // ----------------------------------------------------
+            // CONFIRM ACTION TO USER
+            // ----------------------------------------------------
+
+            Toast.makeText(
+                this@PodcastDetailsActivity,
+                if (isPodcastSubscribed) {
+
+                    "Subscribed to ${
+                        currentPodcast.collectionName
+                            ?: "podcast"
+                    }"
+
+                } else {
+
+                    "Subscription removed."
+                },
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     // ============================================================
     // LOAD PODCAST EPISODES
     //
-    // Uses the feedUrl provided by the iTunes Search API.
+    // Uses PodcastRssParser instead of the older RSSFeedService.
     //
-    // RSSFeedService performs the network request on the
-    // background IO dispatcher.
+    // This is important because PodcastRssParser supports:
+    // 1. RSS enclosure media types.
+    // 2. Media RSS content.
+    // 3. Video detection.
+    // 4. GUID fallback.
+    // 5. Content encoded descriptions.
     // ============================================================
 
     private fun loadPodcastEpisodes(
@@ -309,9 +544,7 @@ class PodcastDetailsActivity : AppCompatActivity() {
         // CHECK RSS FEED URL
         // --------------------------------------------------------
 
-        if (
-            feedUrl.isNullOrBlank()
-        ) {
+        if (feedUrl.isNullOrBlank()) {
 
             textViewEpisodesLoading.text =
                 "Episodes are unavailable for this podcast."
@@ -337,24 +570,20 @@ class PodcastDetailsActivity : AppCompatActivity() {
 
             try {
 
+                // =================================================
+                // USE THE NEW ASSIGNMENT 8 RSS PARSER
+                // =================================================
+
                 val episodes =
-                    RSSFeedService.loadEpisodes(
+                    PodcastRssParser.parseFeed(
                         feedUrl
                     )
 
                 // ------------------------------------------------
                 // UPDATE UI
-                //
-                // RSSFeedService performs network work away
-                // from the main UI thread.
-                //
-                // lifecycleScope returns to the main thread
-                // after the suspend function completes.
                 // ------------------------------------------------
 
-                if (
-                    episodes.isEmpty()
-                ) {
+                if (episodes.isEmpty()) {
 
                     textViewEpisodesLoading.text =
                         "No episodes were found."
@@ -380,7 +609,7 @@ class PodcastDetailsActivity : AppCompatActivity() {
             ) {
 
                 // ------------------------------------------------
-                // RSS LOADING ERROR
+                // RSS errors should not crash the application.
                 // ------------------------------------------------
 
                 textViewEpisodesLoading.text =
@@ -398,8 +627,9 @@ class PodcastDetailsActivity : AppCompatActivity() {
     // ============================================================
     // PLAY EPISODE
     //
-    // Opens the Media3 Episode Player screen for the
-    // selected podcast episode.
+    // Opens the existing Media3 EpisodePlayerActivity.
+    //
+    // The same media URL can represent either audio or video.
     // ============================================================
 
     private fun playEpisode(
@@ -407,18 +637,14 @@ class PodcastDetailsActivity : AppCompatActivity() {
     ) {
 
         // ========================================================
-        // CHECK AUDIO URL
-        //
-        // An episode cannot be played without an audio URL.
+        // CHECK MEDIA URL
         // ========================================================
 
-        if (
-            episode.audioUrl.isBlank()
-        ) {
+        if (episode.audioUrl.isBlank()) {
 
             Toast.makeText(
                 this,
-                "No audio is available for this episode.",
+                "No playable media is available for this episode.",
                 Toast.LENGTH_SHORT
             ).show()
 
@@ -436,7 +662,7 @@ class PodcastDetailsActivity : AppCompatActivity() {
             )
 
         // ========================================================
-        // SEND EPISODE TITLE
+        // SEND EPISODE INFORMATION
         // ========================================================
 
         intent.putExtra(
@@ -444,15 +670,21 @@ class PodcastDetailsActivity : AppCompatActivity() {
             episode.title
         )
 
-        // ========================================================
-        // SEND EPISODE AUDIO URL
-        //
-        // EpisodePlayerActivity will give this URL to Media3.
-        // ========================================================
-
         intent.putExtra(
             "episode_audio_url",
             episode.audioUrl
+        )
+
+        // --------------------------------------------------------
+        // Also send the media type.
+        //
+        // EpisodePlayerActivity can use this later if it needs
+        // to make audio/video-specific playback decisions.
+        // --------------------------------------------------------
+
+        intent.putExtra(
+            "episode_media_type",
+            episode.mediaType
         )
 
         // ========================================================
@@ -465,52 +697,9 @@ class PodcastDetailsActivity : AppCompatActivity() {
     }
 
     // ============================================================
-    // SUBSCRIBE TO PODCAST
-    //
-    // Saves the complete Podcast object as JSON.
-    // ============================================================
-
-    private fun subscribeToPodcast(
-        podcast: Podcast
-    ) {
-
-        val sharedPreferences =
-            getSharedPreferences(
-                "SuperPodcastSubscriptions",
-                MODE_PRIVATE
-            )
-
-        val podcastId =
-            podcast.trackId?.toString()
-                ?: podcast.collectionName
-                ?: podcast.trackName
-                ?: "unknown"
-
-        val podcastJson =
-            Gson().toJson(
-                podcast
-            )
-
-        sharedPreferences
-            .edit()
-            .putString(
-                "subscription_$podcastId",
-                podcastJson
-            )
-            .apply()
-
-        Toast.makeText(
-            this,
-            "Subscribed to ${podcast.collectionName ?: "podcast"}",
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-
-    // ============================================================
     // OPEN PODCAST
     //
-    // Opens the podcast URL using an application available
-    // on the device.
+    // Opens the podcast URL using an available application.
     // ============================================================
 
     private fun openPodcast(
@@ -521,9 +710,7 @@ class PodcastDetailsActivity : AppCompatActivity() {
             podcast.feedUrl
                 ?: podcast.collectionViewUrl
 
-        if (
-            podcastUrl.isNullOrBlank()
-        ) {
+        if (podcastUrl.isNullOrBlank()) {
 
             Toast.makeText(
                 this,
@@ -560,4 +747,5 @@ class PodcastDetailsActivity : AppCompatActivity() {
         }
     }
 }
+
 

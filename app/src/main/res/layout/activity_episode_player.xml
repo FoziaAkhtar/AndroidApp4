@@ -6,9 +6,9 @@
          Media3 audio player screen.
 
          Displays:
-         1. Episode title
-         2. Media3 playback controls
-         3. Close button
+         1. Back button
+         2. Episode title
+         3. Media3 playback controls
 
          Media3 PlayerView provides:
          - Play / Pause
@@ -27,6 +27,20 @@
     android:background="#FFFFFF">
 
     <!-- ========================================================
+         BACK BUTTON
+         ======================================================== -->
+
+    <Button
+        android:id="@+id/buttonClosePlayer"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:text="← Back to Podcast"
+        android:textSize="14sp"
+        android:textAllCaps="false"
+        android:layout_gravity="start"
+        android:contentDescription="Go back to podcast details" />
+
+    <!-- ========================================================
          PLAYER SCREEN TITLE
          ======================================================== -->
 
@@ -39,6 +53,7 @@
         android:textSize="22sp"
         android:textStyle="bold"
         android:gravity="center"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="16dp" />
 
     <!-- ========================================================
@@ -60,7 +75,6 @@
 
     <!-- ========================================================
          MEDIA3 PLAYER VIEW
-         ========================================================
 
          Media3 provides the playback controls automatically.
 
@@ -82,18 +96,5 @@
         app:show_subtitle_button="false"
         app:show_previous_button="false"
         app:show_next_button="false" />
-
-    <!-- ========================================================
-         CLOSE PLAYER BUTTON
-         ======================================================== -->
-
-    <Button
-        android:id="@+id/buttonClosePlayer"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_gravity="center"
-        android:text="Close Player"
-        android:textSize="14sp"
-        android:textAllCaps="false" />
 
 </LinearLayout>
