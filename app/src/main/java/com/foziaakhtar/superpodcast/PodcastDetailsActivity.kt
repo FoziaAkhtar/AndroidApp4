@@ -8,8 +8,12 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.gson.Gson
+import kotlinx.coroutines.launch
 
 // ============================================================
 // PODCAST DETAILS ACTIVITY
@@ -22,27 +26,58 @@ import com.google.gson.Gson
 // 3. Display podcast title.
 // 4. Display podcast creator.
 // 5. Subscribe to the podcast.
-// 6. Open or play the podcast.
+// 6. Open the podcast.
+// 7. Load latest podcast episodes from RSS.
+// 8. Display episodes in a RecyclerView.
+// 9. Open selected episodes in the Media3 player.
 // ============================================================
 
 class PodcastDetailsActivity : AppCompatActivity() {
 
+    // ========================================================
+    // PODCAST DETAIL VIEWS
+    // ========================================================
+
     private lateinit var buttonBack: Button
+
     private lateinit var imageViewPodcastArtwork: ImageView
+
     private lateinit var textViewPodcastTitle: TextView
+
     private lateinit var textViewPodcastArtist: TextView
+
     private lateinit var buttonSubscribeDetails: Button
+
     private lateinit var buttonOpenPodcast: Button
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    // ========================================================
+    // EPISODE VIEWS
+    // ========================================================
+
+    private lateinit var textViewEpisodesLoading: TextView
+
+    private lateinit var recyclerViewEpisodes: RecyclerView
+
+    // ========================================================
+    // EPISODE ADAPTER
+    // ========================================================
+
+    private lateinit var episodeAdapter: EpisodeAdapter
+
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
+
+        super.onCreate(
+            savedInstanceState
+        )
 
         setContentView(
             R.layout.activity_podcast_details
         )
 
         // ========================================================
-        // CONNECT XML VIEWS
+        // CONNECT PODCAST DETAIL VIEWS
         // ========================================================
 
         buttonBack =
@@ -76,6 +111,20 @@ class PodcastDetailsActivity : AppCompatActivity() {
             )
 
         // ========================================================
+        // CONNECT EPISODE VIEWS
+        // ========================================================
+
+        textViewEpisodesLoading =
+            findViewById(
+                R.id.textViewEpisodesLoading
+            )
+
+        recyclerViewEpisodes =
+            findViewById(
+                R.id.recyclerViewEpisodes
+            )
+
+        // ========================================================
         // BACK BUTTON
         //
         // Returns to whichever screen opened the details screen.
@@ -99,7 +148,9 @@ class PodcastDetailsActivity : AppCompatActivity() {
                 "podcast_json"
             )
 
-        if (podcastJson.isNullOrBlank()) {
+        if (
+            podcastJson.isNullOrBlank()
+        ) {
 
             Toast.makeText(
                 this,
@@ -124,7 +175,9 @@ class PodcastDetailsActivity : AppCompatActivity() {
                     Podcast::class.java
                 )
 
-            } catch (exception: Exception) {
+            } catch (
+                exception: Exception
+            ) {
 
                 null
             }
@@ -133,7 +186,9 @@ class PodcastDetailsActivity : AppCompatActivity() {
         // CHECK PODCAST DATA
         // ========================================================
 
-        if (podcast == null) {
+        if (
+            podcast == null
+        ) {
 
             Toast.makeText(
                 this,
@@ -168,14 +223,18 @@ class PodcastDetailsActivity : AppCompatActivity() {
         // ========================================================
 
         Glide.with(this)
-            .load(podcast.artworkUrl100)
+            .load(
+                podcast.artworkUrl100
+            )
             .placeholder(
                 android.R.drawable.ic_menu_gallery
             )
             .error(
                 android.R.drawable.ic_menu_gallery
             )
-            .into(imageViewPodcastArtwork)
+            .into(
+                imageViewPodcastArtwork
+            )
 
         // ========================================================
         // SUBSCRIBE BUTTON
@@ -189,7 +248,7 @@ class PodcastDetailsActivity : AppCompatActivity() {
         }
 
         // ========================================================
-        // OPEN / PLAY PODCAST BUTTON
+        // OPEN PODCAST BUTTON
         // ========================================================
 
         buttonOpenPodcast.setOnClickListener {
@@ -198,6 +257,211 @@ class PodcastDetailsActivity : AppCompatActivity() {
                 podcast
             )
         }
+
+        // ========================================================
+        // SET UP EPISODE RECYCLERVIEW
+        // ========================================================
+
+        episodeAdapter =
+            EpisodeAdapter(
+                emptyList()
+            ) { episode ->
+
+                playEpisode(
+                    episode
+                )
+            }
+
+        recyclerViewEpisodes.layoutManager =
+            LinearLayoutManager(
+                this
+            )
+
+        recyclerViewEpisodes.adapter =
+            episodeAdapter
+
+        // ========================================================
+        // LOAD RSS EPISODES
+        // ========================================================
+
+        loadPodcastEpisodes(
+            podcast
+        )
+    }
+
+    // ============================================================
+    // LOAD PODCAST EPISODES
+    //
+    // Uses the feedUrl provided by the iTunes Search API.
+    //
+    // RSSFeedService performs the network request on the
+    // background IO dispatcher.
+    // ============================================================
+
+    private fun loadPodcastEpisodes(
+        podcast: Podcast
+    ) {
+
+        val feedUrl =
+            podcast.feedUrl
+
+        // --------------------------------------------------------
+        // CHECK RSS FEED URL
+        // --------------------------------------------------------
+
+        if (
+            feedUrl.isNullOrBlank()
+        ) {
+
+            textViewEpisodesLoading.text =
+                "Episodes are unavailable for this podcast."
+
+            return
+        }
+
+        // --------------------------------------------------------
+        // SHOW LOADING MESSAGE
+        // --------------------------------------------------------
+
+        textViewEpisodesLoading.text =
+            "Loading episodes..."
+
+        textViewEpisodesLoading.visibility =
+            TextView.VISIBLE
+
+        // --------------------------------------------------------
+        // LOAD RSS FEED
+        // --------------------------------------------------------
+
+        lifecycleScope.launch {
+
+            try {
+
+                val episodes =
+                    RSSFeedService.loadEpisodes(
+                        feedUrl
+                    )
+
+                // ------------------------------------------------
+                // UPDATE UI
+                //
+                // RSSFeedService performs network work away
+                // from the main UI thread.
+                //
+                // lifecycleScope returns to the main thread
+                // after the suspend function completes.
+                // ------------------------------------------------
+
+                if (
+                    episodes.isEmpty()
+                ) {
+
+                    textViewEpisodesLoading.text =
+                        "No episodes were found."
+
+                    recyclerViewEpisodes.visibility =
+                        RecyclerView.GONE
+
+                } else {
+
+                    textViewEpisodesLoading.visibility =
+                        TextView.GONE
+
+                    recyclerViewEpisodes.visibility =
+                        RecyclerView.VISIBLE
+
+                    episodeAdapter.updateList(
+                        episodes
+                    )
+                }
+
+            } catch (
+                exception: Exception
+            ) {
+
+                // ------------------------------------------------
+                // RSS LOADING ERROR
+                // ------------------------------------------------
+
+                textViewEpisodesLoading.text =
+                    "Unable to load episodes."
+
+                textViewEpisodesLoading.visibility =
+                    TextView.VISIBLE
+
+                recyclerViewEpisodes.visibility =
+                    RecyclerView.GONE
+            }
+        }
+    }
+
+    // ============================================================
+    // PLAY EPISODE
+    //
+    // Opens the Media3 Episode Player screen for the
+    // selected podcast episode.
+    // ============================================================
+
+    private fun playEpisode(
+        episode: Episode
+    ) {
+
+        // ========================================================
+        // CHECK AUDIO URL
+        //
+        // An episode cannot be played without an audio URL.
+        // ========================================================
+
+        if (
+            episode.audioUrl.isBlank()
+        ) {
+
+            Toast.makeText(
+                this,
+                "No audio is available for this episode.",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            return
+        }
+
+        // ========================================================
+        // CREATE PLAYER INTENT
+        // ========================================================
+
+        val intent =
+            Intent(
+                this,
+                EpisodePlayerActivity::class.java
+            )
+
+        // ========================================================
+        // SEND EPISODE TITLE
+        // ========================================================
+
+        intent.putExtra(
+            "episode_title",
+            episode.title
+        )
+
+        // ========================================================
+        // SEND EPISODE AUDIO URL
+        //
+        // EpisodePlayerActivity will give this URL to Media3.
+        // ========================================================
+
+        intent.putExtra(
+            "episode_audio_url",
+            episode.audioUrl
+        )
+
+        // ========================================================
+        // OPEN MEDIA3 PLAYER
+        // ========================================================
+
+        startActivity(
+            intent
+        )
     }
 
     // ============================================================
@@ -222,18 +486,10 @@ class PodcastDetailsActivity : AppCompatActivity() {
                 ?: podcast.trackName
                 ?: "unknown"
 
-        // ========================================================
-        // CONVERT PODCAST TO JSON
-        // ========================================================
-
         val podcastJson =
             Gson().toJson(
                 podcast
             )
-
-        // ========================================================
-        // SAVE PODCAST
-        // ========================================================
 
         sharedPreferences
             .edit()
@@ -243,10 +499,6 @@ class PodcastDetailsActivity : AppCompatActivity() {
             )
             .apply()
 
-        // ========================================================
-        // CONFIRM SUBSCRIPTION
-        // ========================================================
-
         Toast.makeText(
             this,
             "Subscribed to ${podcast.collectionName ?: "podcast"}",
@@ -255,7 +507,7 @@ class PodcastDetailsActivity : AppCompatActivity() {
     }
 
     // ============================================================
-    // OPEN / PLAY PODCAST
+    // OPEN PODCAST
     //
     // Opens the podcast URL using an application available
     // on the device.
@@ -269,11 +521,9 @@ class PodcastDetailsActivity : AppCompatActivity() {
             podcast.feedUrl
                 ?: podcast.collectionViewUrl
 
-        // ========================================================
-        // CHECK FOR PODCAST URL
-        // ========================================================
-
-        if (podcastUrl.isNullOrBlank()) {
+        if (
+            podcastUrl.isNullOrBlank()
+        ) {
 
             Toast.makeText(
                 this,
@@ -284,23 +534,23 @@ class PodcastDetailsActivity : AppCompatActivity() {
             return
         }
 
-        // ========================================================
-        // OPEN PODCAST URL
-        // ========================================================
-
         try {
 
             val intent =
                 Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse(podcastUrl)
+                    Uri.parse(
+                        podcastUrl
+                    )
                 )
 
             startActivity(
                 intent
             )
 
-        } catch (exception: Exception) {
+        } catch (
+            exception: Exception
+        ) {
 
             Toast.makeText(
                 this,
@@ -310,5 +560,4 @@ class PodcastDetailsActivity : AppCompatActivity() {
         }
     }
 }
-
 
