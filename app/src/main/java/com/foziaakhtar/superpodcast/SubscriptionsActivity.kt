@@ -1,41 +1,65 @@
-
 package com.foziaakhtar.superpodcast
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.gson.Gson
+import kotlinx.coroutines.launch
 
 // ============================================================
 // SUBSCRIPTIONS ACTIVITY
 //
+// PURPOSE:
 // Displays podcasts that the user has subscribed to.
 //
-// Features:
+// ROOM DATABASE:
+// Subscriptions are loaded from AppDatabase instead of the
+// older SharedPreferences/Gson subscription system.
+//
+// FEATURES:
 // 1. Displays saved podcast subscriptions.
 // 2. Displays podcast artwork, title, and creator.
 // 3. Opens Podcast Details when a podcast is selected.
-// 4. Provides a Back to Search button.
-// 5. Handles system-bar spacing.
+// 4. Automatically refreshes when subscriptions change.
+// 5. Provides a Back to Search button.
+// 6. Handles system-bar spacing.
 // ============================================================
 
 class SubscriptionsActivity : AppCompatActivity() {
+
+    // ========================================================
+    // UI REFERENCES
+    // ========================================================
 
     private lateinit var recyclerViewSubscriptions: RecyclerView
     private lateinit var textViewEmptyMessage: TextView
     private lateinit var buttonBackToSearch: Button
 
+    // ========================================================
+    // ROOM DATABASE
+    // ========================================================
+
+    private lateinit var database: AppDatabase
+
+    // ========================================================
+    // SUBSCRIPTION ADAPTER
+    // ========================================================
+
+    private lateinit var subscriptionAdapter: SubscriptionAdapter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ====================================================
+        // ENABLE EDGE-TO-EDGE
+        // ====================================================
 
         enableEdgeToEdge()
 
@@ -43,9 +67,9 @@ class SubscriptionsActivity : AppCompatActivity() {
             R.layout.activity_subscriptions
         )
 
-        // ========================================================
+        // ====================================================
         // CONNECT XML VIEWS
-        // ========================================================
+        // ====================================================
 
         recyclerViewSubscriptions =
             findViewById(
@@ -62,12 +86,12 @@ class SubscriptionsActivity : AppCompatActivity() {
                 R.id.buttonBackToSearch
             )
 
-        // ========================================================
+        // ====================================================
         // HANDLE SYSTEM BAR INSETS
         //
-        // Apply spacing to the whole subscriptions screen so
-        // the title does not sit underneath the status bar.
-        // ========================================================
+        // Prevents the screen content from appearing underneath
+        // the status bar or navigation bar.
+        // ====================================================
 
         ViewCompat.setOnApplyWindowInsetsListener(
             findViewById(R.id.subscriptionsRoot)
@@ -88,11 +112,11 @@ class SubscriptionsActivity : AppCompatActivity() {
             insets
         }
 
-        // ========================================================
+        // ====================================================
         // BACK TO SEARCH BUTTON
         //
         // Returns the user to MainActivity.
-        // ========================================================
+        // ====================================================
 
         buttonBackToSearch.setOnClickListener {
 
@@ -106,176 +130,147 @@ class SubscriptionsActivity : AppCompatActivity() {
                 Intent.FLAG_ACTIVITY_CLEAR_TOP
             )
 
-            startActivity(
-                intent
-            )
+            startActivity(intent)
 
             finish()
         }
 
-        // ========================================================
+        // ====================================================
+        // INITIALIZE ROOM DATABASE
+        // ====================================================
+
+        database =
+            AppDatabase.getDatabase(
+                applicationContext
+            )
+
+        // ====================================================
         // SET UP RECYCLER VIEW
-        // ========================================================
+        // ====================================================
 
         recyclerViewSubscriptions.layoutManager =
             LinearLayoutManager(this)
 
-        // ========================================================
-        // LOAD SAVED PODCASTS
-        // ========================================================
+        // ====================================================
+        // CREATE SUBSCRIPTION ADAPTER
+        // ====================================================
 
-        loadSubscriptions()
+        subscriptionAdapter =
+            SubscriptionAdapter(
+                emptyList()
+            ) { subscription ->
+
+                // ============================================
+                // OPEN SELECTED PODCAST
+                // ============================================
+
+                openPodcastDetails(
+                    subscription
+                )
+            }
+
+        recyclerViewSubscriptions.adapter =
+            subscriptionAdapter
+
+        // ====================================================
+        // OBSERVE ROOM SUBSCRIPTIONS
+        //
+        // Flow automatically provides the latest subscription
+        // list whenever the database changes.
+        // ====================================================
+
+        observeSubscriptions()
     }
 
     // ============================================================
-    // LOAD SUBSCRIPTIONS
+    // OBSERVE SUBSCRIPTIONS
     //
-    // Reads saved podcast JSON objects from SharedPreferences.
+    // Reads the subscription Flow from Room.
+    //
+    // Whenever a podcast is added or removed, Room emits a new
+    // list and the RecyclerView updates automatically.
     // ============================================================
 
-    private fun loadSubscriptions() {
+    private fun observeSubscriptions() {
 
-        val sharedPreferences =
-            getSharedPreferences(
-                "SuperPodcastSubscriptions",
-                MODE_PRIVATE
-            )
+        lifecycleScope.launch {
 
-        val savedSubscriptions =
-            sharedPreferences.all
+            database
+                .subscriptionDao()
+                .getAll()
+                .collect { subscriptions ->
 
-        // ========================================================
-        // CHECK WHETHER ANY DATA EXISTS
-        // ========================================================
+                    // ========================================
+                    // UPDATE RECYCLER VIEW
+                    // ========================================
 
-        if (savedSubscriptions.isEmpty()) {
+                    subscriptionAdapter.updateList(
+                        subscriptions
+                    )
 
-            textViewEmptyMessage.text =
-                "You have not subscribed to any podcasts yet."
+                    // ========================================
+                    // UPDATE EMPTY/COUNT MESSAGE
+                    // ========================================
 
-            textViewEmptyMessage.visibility =
-                TextView.VISIBLE
+                    if (subscriptions.isEmpty()) {
 
-            return
-        }
+                        showEmptyMessage()
 
-        // ========================================================
-        // CONVERT SAVED JSON INTO PODCAST OBJECTS
-        // ========================================================
+                    } else {
 
-        val gson =
-            Gson()
+                        textViewEmptyMessage.text =
+                            "${subscriptions.size} podcast subscription(s)"
 
-        val subscribedPodcasts =
-            mutableListOf<Podcast>()
+                        textViewEmptyMessage.visibility =
+                            TextView.VISIBLE
 
-        for ((key, value) in savedSubscriptions) {
-
-            if (
-                key.startsWith("subscription_") &&
-                value is String
-            ) {
-
-                try {
-
-                    val podcast =
-                        gson.fromJson(
-                            value,
-                            Podcast::class.java
-                        )
-
-                    if (podcast != null) {
-
-                        subscribedPodcasts.add(
-                            podcast
-                        )
+                        recyclerViewSubscriptions.visibility =
+                            RecyclerView.VISIBLE
                     }
-
-                } catch (exception: Exception) {
-
-                    // Ignore invalid saved entries.
                 }
-            }
         }
+    }
 
-        // ========================================================
-        // CHECK FOR VALID PODCASTS
-        // ========================================================
+    // ============================================================
+    // SHOW EMPTY MESSAGE
+    //
+    // Displays when there are no saved subscriptions.
+    // ============================================================
 
-        if (subscribedPodcasts.isEmpty()) {
-
-            textViewEmptyMessage.text =
-                "You have not subscribed to any podcasts yet."
-
-            textViewEmptyMessage.visibility =
-                TextView.VISIBLE
-
-            return
-        }
-
-        // ========================================================
-        // DISPLAY SUBSCRIPTION COUNT
-        // ========================================================
+    private fun showEmptyMessage() {
 
         textViewEmptyMessage.text =
-            "${subscribedPodcasts.size} podcast subscription(s)"
+            "You have not subscribed to any podcasts yet."
 
         textViewEmptyMessage.visibility =
             TextView.VISIBLE
 
-        // ========================================================
-        // CREATE SUBSCRIPTION ADAPTER
-        // ========================================================
-
-        val subscriptionAdapter =
-            PodcastAdapter(
-                subscribedPodcasts,
-
-                // ------------------------------------------------
-                // PODCAST CLICK
-                //
-                // Opens the Podcast Details screen.
-                // ------------------------------------------------
-
-                onPodcastClick = { podcast ->
-
-                    openPodcastDetails(
-                        podcast
-                    )
-                },
-
-                // ------------------------------------------------
-                // SUBSCRIBE BUTTON
-                // ------------------------------------------------
-
-                onSubscribeClick = { podcast ->
-
-                    Toast.makeText(
-                        this,
-                        "Already subscribed to this podcast.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            )
-
-        recyclerViewSubscriptions.adapter =
-            subscriptionAdapter
+        recyclerViewSubscriptions.visibility =
+            RecyclerView.GONE
     }
 
     // ============================================================
     // OPEN PODCAST DETAILS
     //
-    // Sends the selected Podcast object to
-    // PodcastDetailsActivity as JSON.
+    // Converts the Room SubscribedPodcast object into the
+    // Podcast model expected by PodcastDetailsActivity.
+    //
+    // This allows the existing details screen to continue
+    // working with the new Room subscription system.
     // ============================================================
 
     private fun openPodcastDetails(
-        podcast: Podcast
+        subscription: SubscribedPodcast
     ) {
 
-        val podcastJson =
-            Gson().toJson(
-                podcast
+        val podcast =
+            Podcast(
+                trackId = subscription.trackId,
+                collectionName = subscription.collectionName,
+                artistName = subscription.artistName,
+                artworkUrl100 = subscription.artworkUrl100,
+                feedUrl = subscription.feedUrl,
+                collectionViewUrl = subscription.collectionViewUrl
             )
 
         val intent =
@@ -284,62 +279,17 @@ class SubscriptionsActivity : AppCompatActivity() {
                 PodcastDetailsActivity::class.java
             )
 
+        // ====================================================
+        // SEND PODCAST INFORMATION TO DETAILS SCREEN
+        // ====================================================
+
         intent.putExtra(
             "podcast_json",
-            podcastJson
-        )
-
-        startActivity(
-            intent
-        )
-    }
-
-    // ============================================================
-    // OPEN PODCAST
-    //
-    // Opens the podcast link using an application available
-    // on the device.
-    // ============================================================
-
-    private fun openPodcast(
-        podcast: Podcast
-    ) {
-
-        val podcastUrl =
-            podcast.feedUrl
-                ?: podcast.collectionViewUrl
-
-        if (podcastUrl.isNullOrBlank()) {
-
-            Toast.makeText(
-                this,
-                "No podcast link is available.",
-                Toast.LENGTH_SHORT
-            ).show()
-
-            return
-        }
-
-        try {
-
-            val intent =
-                Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse(podcastUrl)
-                )
-
-            startActivity(
-                intent
+            com.google.gson.Gson().toJson(
+                podcast
             )
+        )
 
-        } catch (exception: Exception) {
-
-            Toast.makeText(
-                this,
-                "Unable to open this podcast.",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
+        startActivity(intent)
     }
 }
-

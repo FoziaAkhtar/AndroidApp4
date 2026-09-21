@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
          ========================================================
          INTERNET PERMISSION
-         Required to connect SuperPodcast to the iTunes Podcast API.
+         Required to connect SuperPodcast to:
+         1. iTunes Podcast API
+         2. Podcast RSS feeds
+         3. Podcast episode audio streams
          ========================================================
     -->
 
@@ -20,24 +24,80 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SuperPodcast">
+
+        <!--
+             ========================================================
+             MAIN ACTIVITY
+             ========================================================
+             Launch screen for SuperPodcast.
+             ========================================================
+        -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
+
+        <!--
+             ========================================================
+             SUBSCRIPTIONS ACTIVITY
+             ========================================================
+             Displays the podcasts saved by the user.
+             ========================================================
+        -->
+
         <activity
             android:name=".SubscriptionsActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <!--
+             ========================================================
+             PODCAST DETAILS ACTIVITY
+             ========================================================
+             Displays:
+             1. Podcast information
+             2. Podcast artwork
+             3. Subscribe option
+             4. Latest RSS episodes
+             5. Play Episode buttons
+             ========================================================
+        -->
+
         <activity
             android:name=".PodcastDetailsActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <!--
+             ========================================================
+             EPISODE PLAYER ACTIVITY
+             ========================================================
+             Provides Media3 audio playback for podcast episodes.
+
+             This Activity is opened when the user taps:
+             "▶ Play Episode"
+
+             Media3 provides:
+             1. Play / Pause
+             2. Playback progress
+             3. Seek controls
+             4. Audio playback
+             ========================================================
+        -->
+
+        <activity
+            android:name=".EpisodePlayerActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>

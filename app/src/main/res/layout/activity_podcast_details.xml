@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-    <!-- ============================================================
-         SUPERPODCAST PODCAST DETAILS SCREEN
+<!-- ============================================================
+     SUPERPODCAST PODCAST DETAILS SCREEN
 
-         Displays detailed information about one podcast.
+     Displays detailed information about one podcast.
 
-         Features:
-         1. Back to previous screen
-         2. Podcast artwork
-         3. Podcast title
-         4. Podcast creator
-         5. Subscribe button
-         6. Open or play podcast button
-         ============================================================ -->
+     Features:
+     1. Back to previous screen
+     2. Podcast artwork
+     3. Podcast title
+     4. Podcast creator
+     5. Subscribe button
+     6. Open or play podcast button
+     7. Podcast episodes
+     ============================================================ -->
 
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -95,6 +96,42 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="Open / Play Podcast" />
+
+        <!-- ========================================================
+             EPISODES SECTION
+             ======================================================== -->
+
+        <TextView
+            android:id="@+id/textViewEpisodesTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="Latest Episodes"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <!-- ========================================================
+             EPISODES LOADING MESSAGE
+             ======================================================== -->
+
+        <TextView
+            android:id="@+id/textViewEpisodesLoading"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Loading episodes..."
+            android:textSize="15sp" />
+
+        <!-- ========================================================
+             EPISODES LIST
+             ======================================================== -->
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViewEpisodes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:nestedScrollingEnabled="false" />
 
     </LinearLayout>
 

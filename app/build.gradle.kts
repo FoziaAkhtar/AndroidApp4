@@ -1,5 +1,12 @@
 plugins {
     alias(libs.plugins.android.application)
+
+    // ============================================================
+    // KSP
+    // Required by Room Database for code generation.
+    // ============================================================
+
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -88,6 +95,34 @@ dependencies {
     // ============================================================
 
     implementation("com.google.code.gson:gson:2.13.2")
+
+
+    // ============================================================
+    // ROOM DATABASE
+    // Room will store podcast subscriptions locally.
+    // ============================================================
+
+    implementation("androidx.room:room-runtime:2.8.0")
+    implementation("androidx.room:room-ktx:2.8.0")
+    ksp("androidx.room:room-compiler:2.8.0")
+
+
+    // ============================================================
+    // WORKMANAGER
+    // WorkManager will periodically check for new podcast episodes.
+    // ============================================================
+
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
+
+
+    // ============================================================
+    // MEDIA3 / EXOPLAYER
+    // Media3 will provide podcast audio playback.
+    // ============================================================
+
+    implementation("androidx.media3:media3-exoplayer:1.8.0")
+    implementation("androidx.media3:media3-ui:1.8.0")
+    implementation("androidx.media3:media3-exoplayer-hls:1.8.0")
 
 
     // ============================================================
